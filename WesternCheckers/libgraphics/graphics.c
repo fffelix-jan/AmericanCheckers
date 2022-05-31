@@ -5,6 +5,10 @@
  * -----------------------------------------------------
  * This file implements the graphics.h and extgraph.h interfaces
  * for the Borland/Windows platform.
+ * 
+ * MODIFIED VERSION BY FELIX AN: This version contains a
+ * GetGraphicsWindowHwnd() and a GetConsoleWindowHwnd()
+ * function.
  */
 
 #include <stdio.h>
@@ -214,6 +218,19 @@ static bool initialized = FALSE;
 static bool pauseOnExit = TRUE;
 
 static HWND consoleWindow, graphicsWindow;
+
+// Code added by Felix An
+HWND GetConsoleWindowHwnd(void)
+{
+    return consoleWindow;
+}
+
+HWND GetGraphicsWindowHwnd(void)
+{
+    return graphicsWindow;
+}
+
+
 static HDC gdc, osdc;
 static HBITMAP osBits;
 static HPEN drawPen, erasePen, nullPen;

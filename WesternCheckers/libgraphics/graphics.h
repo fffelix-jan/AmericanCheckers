@@ -12,6 +12,10 @@
 
 #ifndef _graphics_h
 #define _graphics_h
+//HWND GetConsoleWindowHwnd(void);
+//HWND GetGraphicsWindowHwnd(void);
+
+
 /*
  * Overview
  * --------
