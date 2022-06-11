@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.32228.343
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WesternCheckers", "WesternCheckers\WesternCheckers.vcxproj", "{B3D368A2-B5D5-4B31-A44E-CA37F4A0EA14}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AmericanCheckers", "WesternCheckers\WesternCheckers.vcxproj", "{B3D368A2-B5D5-4B31-A44E-CA37F4A0EA14}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

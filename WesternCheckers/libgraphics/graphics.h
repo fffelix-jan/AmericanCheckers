@@ -12,10 +12,6 @@
 
 #ifndef _graphics_h
 #define _graphics_h
-//HWND GetConsoleWindowHwnd(void);
-//HWND GetGraphicsWindowHwnd(void);
-
-
 /*
  * Overview
  * --------
@@ -185,6 +181,7 @@ void cancelCharEvent();
 void cancelMouseEvent();
 void cancelTimerEvent();
 void startTimer(int id, int timeinterval);
+void cancelTimer(int id);
 
 void DisplayClear();
 

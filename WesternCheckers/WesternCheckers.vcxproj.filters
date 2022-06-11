@@ -60,6 +60,12 @@
     <ClInclude Include="simpleGUI\imgui.h">
       <Filter>Header Files\simpleGUI</Filter>
     </ClInclude>
+    <ClInclude Include="CheckersConstants.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CheckersPieces.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="WesternCheckers.rc">
@@ -102,5 +108,16 @@
     <ClCompile Include="main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CheckersPieces.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="sounds\ChkIntro.wav">
+      <Filter>Resource Files</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="sounds\ChkCapturePiece.wav">
+      <Filter>Resource Files</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>

@@ -22,8 +22,9 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{b3d368a2-b5d5-4b31-a44e-ca37f4a0ea14}</ProjectGuid>
-    <RootNamespace>WesternCheckers</RootNamespace>
+    <RootNamespace>AmericanCheckers</RootNamespace>
     <WindowsTargetPlatformVersion>7.0</WindowsTargetPlatformVersion>
+    <ProjectName>AmericanCheckers</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -95,6 +96,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -112,6 +114,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -143,6 +146,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CheckersConstants.h" />
+    <ClInclude Include="CheckersPieces.h" />
     <ClInclude Include="libgraphics\boolean.h" />
     <ClInclude Include="libgraphics\exception.h" />
     <ClInclude Include="libgraphics\extgraph.h" />
@@ -165,6 +170,7 @@
     <Image Include="WesternCheckers.ico" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CheckersPieces.c" />
     <ClCompile Include="libgraphics\exceptio.c" />
     <ClCompile Include="libgraphics\genlib.c" />
     <ClCompile Include="libgraphics\graphics.c" />
@@ -172,8 +178,21 @@
     <ClCompile Include="libgraphics\random.c" />
     <ClCompile Include="libgraphics\simpio.c" />
     <ClCompile Include="libgraphics\strlib.c" />
-    <ClCompile Include="main.c" />
+    <ClCompile Include="main.c">
+      <FavorSizeOrSpeed Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Speed</FavorSizeOrSpeed>
+      <FavorSizeOrSpeed Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Speed</FavorSizeOrSpeed>
+    </ClCompile>
     <ClCompile Include="simpleGUI\imgui.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="sounds\ChkIntro.wav">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="sounds\ChkCapturePiece.wav">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
