@@ -28,6 +28,10 @@ bool GamePause = false;
 int TimeRemaining = TIME_LIMIT;
 int TotalTime;
 
+bool LogActive = false;
+bool PlaybackActive = false;
+FILE* LogFile;
+
 void display(void);
 
 void logToConsole(const char* st);
@@ -121,10 +125,12 @@ void loadGame(const char* fileName)
         if (strcmp(headerLine, "FA_USCHKSV") != 0)
         {
             MessageBox((HWND)GetGraphicsWindowHwnd(), "The file you opened is not an American Checkers save file.", "Invalid File", MB_ICONERROR);
+            fclose(saveFile);
             return;
         }
         // Discard the rest of the first line
-        while (fgetc(saveFile) != '\n');
+        int ch;
+        while (ch = fgetc(saveFile) != '\n' && ch != EOF);
 
         fscanf(saveFile, "%d%d%d", &TotalTime, &TimeRemaining, &PieceSelected);
 
@@ -158,6 +164,115 @@ void loadGame(const char* fileName)
         }
         fclose(saveFile);
     }
+}
+
+// Stops the recording and closes the file.
+inline void stopRecording(void)
+{
+    LogActive = false;
+    fclose(LogFile);
+}
+
+// Logs the current board state to the replay file.
+void logBoardStateToReplayFile(FILE* fp)
+{
+    int i;
+    for (i = 0; i < 12; ++i)
+    {
+        fprintf(fp, "%d %d ", RedPieces[i][0], RedPieces[i][1]);
+    }
+    fputc('\n', fp);
+    for (i = 0; i < 12; ++i)
+    {
+        fprintf(fp, "%d ", RedKings[i]);
+    }
+    fputc('\n', fp);
+    for (i = 0; i < 12; ++i)
+    {
+        fprintf(fp, "%d %d ", BluePieces[i][0], BluePieces[i][1]);
+    }
+    fputc('\n', fp);
+    for (i = 0; i < 12; ++i)
+    {
+        fprintf(fp, "%d ", BlueKings[i]);
+    }
+    fputc('\n', fp);
+}
+
+// Replays a playback file.
+void replay(const char* fileName)
+{
+    FILE* fp = fopen(fileName, "r");
+    if (fp == NULL)
+    {
+        MessageBox((HWND)GetGraphicsWindowHwnd(), "Error opening playback file.", "Error", MB_ICONHAND);
+        return;
+    }
+
+    char inputBuffer[50];
+    inputBuffer[0] = '\0';
+    fscanf(fp, "%49s", inputBuffer);
+    if (strcmp(inputBuffer, "FA_USCHKRP") != 0)
+    {
+        MessageBox((HWND)GetGraphicsWindowHwnd(), "The file you opened is not an American Checkers playback file.", "Invalid File", MB_ICONERROR);
+        fclose(fp);
+        return;
+    }
+
+    PlaybackActive = true;
+
+    int i = 0;
+    int j;
+    int temp;
+    int scanres = 5;
+    for (;;)
+    {
+        switch (i)
+        {
+        case 0:
+            for (j = 0; j < 12; ++j)
+            {
+                scanres = fscanf(fp, "%d%d", &RedPieces[j][0], &RedPieces[j][1]);
+            }
+            break;
+        case 1:
+            for (j = 0; j < 12; ++j)
+            {
+                scanres = fscanf(fp, "%d", &temp);
+                RedKings[j] = temp;
+            }
+            break;
+        case 2:
+            for (j = 0; j < 12; ++j)
+            {
+                scanres = fscanf(fp, "%d%d", &BluePieces[j][0], &BluePieces[j][1]);
+            }
+            break;
+        case 3:
+            for (j = 0; j < 12; ++j)
+            {
+                scanres = fscanf(fp, "%d", &temp);
+                BlueKings[j] = temp;
+            }
+            break;
+        }
+
+        if (scanres == EOF) break;
+        if (i >= 3)
+        {
+            i = 0;
+            display();
+            Sleep(1000);
+        }
+        else
+        {
+            ++i;
+        }
+    }
+    MessageBox((HWND)GetGraphicsWindowHwnd(), "Playback complete. Press OK to start a new game.", "Playback Complete", MB_ICONASTERISK);
+    fclose(fp);
+    PlaybackActive = false;
+    resetGame();
 }
 
 // Prompts to save a game.
@@ -213,6 +328,81 @@ void promptOpen(void)
     GamePause = oldStatus;
 }
 
+// Prompts to start recording.
+void promptRecord(void)
+{
+    bool oldStatus = GamePause;
+    GamePause = true;
+
+    OPENFILENAME ofn;
+    char fileName[1024];
+    ZeroMemory(&ofn, sizeof(OPENFILENAME));
+
+    ofn.lStructSize = sizeof(OPENFILENAME);
+    ofn.hwndOwner = (HWND)GetGraphicsWindowHwnd();
+    ofn.lpstrFile = fileName;
+    ofn.lpstrFile[0] = '\0';
+    ofn.nMaxFile = sizeof(fileName);
+    ofn.lpstrFilter = "Checkers Playback Files (*.ckh)\0*.CKH\0All Files (*.*)\0*.*\0";
+    ofn.lpstrDefExt = "ckh";
+    ofn.nFilterIndex = 1;
+    ofn.lpstrTitle = "Start Recording";
+    ofn.Flags = OFN_OVERWRITEPROMPT;
+
+    GetSaveFileName(&ofn);
+    if (strlen(ofn.lpstrFile) > 0)
+    {
+        LogFile = fopen(fileName, "w");
+        if (LogFile == NULL)
+        {
+            MessageBox((HWND)GetGraphicsWindowHwnd(), "Error opening playback file.", "Error", MB_ICONHAND);
+        }
+        else
+        {
+            LogActive = true;
+            fputs("FA_USCHKRP\n", LogFile);
+            logBoardStateToReplayFile(LogFile);
+        }
+    }
+
+    GamePause = oldStatus;
+}
+
+// Prompts to replay a playback file.
+void promptReplay(void)
+{
+    bool oldStatus = GamePause;
+    GamePause = true;
+
+    int result = MessageBox((HWND)GetGraphicsWindowHwnd(), "Opening a replay file will cause you to lose your current progress. Do you want to continue?", "Confirmation", MB_ICONEXCLAMATION | MB_YESNO);
+    if (result != IDYES)
+    {
+        return;
+    }
+
+    OPENFILENAME ofn;
+    char fileName[1024];
+    ZeroMemory(&ofn, sizeof(OPENFILENAME));
+
+    ofn.lStructSize = sizeof(OPENFILENAME);
+    ofn.hwndOwner = (HWND)GetGraphicsWindowHwnd();
+    ofn.lpstrFile = fileName;
+    ofn.lpstrFile[0] = '\0';
+    ofn.nMaxFile = sizeof(fileName);
+    ofn.lpstrFilter = "Checkers Playback Files (*.ckh)\0*.CKH\0All Files (*.*)\0*.*\0";
+    ofn.nFilterIndex = 1;
+    ofn.lpstrTitle = "Open Playback";
+    ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
+
+    GetOpenFileName(&ofn);
+    if (strlen(ofn.lpstrFile) > 0)
+    {
+        replay(ofn.lpstrFile);
+    }
+
+    GamePause = oldStatus;
+}
+
 // Logs a string to the console with the date and time.
 void logToConsole(const char* st)
 {
@@ -240,7 +430,7 @@ void logTime(void)
 // Opens the Help website.
 inline void openHelp(void)
 {
-    ShellExecute(0, 0, "https://www.felixan.ca", 0, 0, SW_SHOW);
+    ShellExecute(0, 0, "https://www.felixan.ca/AmericanCheckersHowToPlay.html", 0, 0, SW_SHOW);
 }
 
 // Draws the menu bar at the top of the screen.
@@ -249,12 +439,13 @@ void drawMenu()
     static char* menuListFile[] = { "File",
         "New Game | Ctrl-N",
         "Open Game | Ctrl-O",
-        "Open Replay | Ctrl-R",
+        "Open Replay | Ctrl-F",
         "Save Game | Ctrl-S",
+        "Start Recording | Ctrl-R",
         "Pause/Resume | Ctrl-P",
         "Exit  | Ctrl-Q", };
     static char* menuListHelp[] = { "Help",
-        "Documentation...  | F1",
+        "How To Play...  | F1",
         "About" };
     static char* selectedLabel = NULL;
 
@@ -263,7 +454,7 @@ void drawMenu()
     double y = GetWindowHeight();
     double h = fH * 1.5;
     double w = TextStringWidth(menuListHelp[0]) * 2;
-    double wlist = TextStringWidth(menuListHelp[1]) * 1.2;
+    double wlist = TextStringWidth(menuListFile[5]) * 1.1;
     double xindent = GetWindowHeight() / 20;
     int    selection;
 
@@ -280,28 +471,39 @@ void drawMenu()
     {
         promptOpen();
     }
+    if (selection == 3)
+    {
+        promptReplay();
+    }
     if (selection == 4)
     {
         promptSave();
     }
     if (selection == 5)
     {
+        promptRecord();
+    }
+    if (selection == 6)
+    {
         GamePause = !GamePause;
         display();
     }
-    if (selection == 6)
+    if (selection == 7)
         ExitGraphics(); // choose to exit
 
     // Help
     selection = menuList(GenUIID(0), x + 1 * w, y - h, w, wlist, h, menuListHelp, sizeof(menuListHelp) / sizeof(menuListHelp[0]));
     if (selection > 0) selectedLabel = menuListHelp[selection];
     if (selection == 1)
+    {
+        GamePause = true;
         openHelp();
+    }
     if (selection == 2)
     {
         bool oldStatus = GamePause;
         GamePause = true;
-        MessageBox((HWND)GetGraphicsWindowHwnd(), "American Checkers\r\nVersion 1.0.0\r\n\r\nCopyright (c) 2022 Felix An\r\nhttps://www.felixan.ca\r\nLicensed under the MIT License", "About American Checkers", MB_ICONASTERISK);
+        MessageBox((HWND)GetGraphicsWindowHwnd(), "American Checkers\nVersion 1.0.0\n\nCopyright (c) 2022 Felix An\nhttps://www.felixan.ca\nLicensed under the MIT License", "About American Checkers", MB_ICONASTERISK);
         GamePause = oldStatus;
     }
 }
@@ -324,37 +526,46 @@ void drawLabels(void)
     SetPointSize(oldSize);
     SetFont(oldFont);
 
-    // TODO: hide the labels in playback mode
-    MovePen(6, 4.5);
     SetFont("Georgia");
-    SetPointSize(30);
-    DrawTextString("Current Player:");
-    MovePen(6, 4);
-    SetPointSize(50);
-    SetPenColor(BluePlayerTurn ? "Blue" : "Red");
-    DrawTextString(BluePlayerTurn ? "Blue" : "Red");
-    SetPenColor("Black");
-    MovePen(6, 3.5);
-    SetPointSize(30);
-    DrawTextString("Time Remaining:");
-    MovePen(6, 3);
-    SetPointSize(50);
-    char timeString[20];
-    snprintf(timeString, 20, "%d s", TimeRemaining);
-    SetFont("Times New Roman");
-    DrawTextString(timeString);
-    SetFont("Georgia");
-    MovePen(6, 2.5);
-    SetPointSize(30);
-    DrawTextString("Time Elapsed:");
-    MovePen(6, 2);
-    SetPointSize(50);
-    snprintf(timeString, 20, "%02d:%02d:%02d", TotalTime / 3600, TotalTime % 3600 / 60, TotalTime % 3600 % 60);
-    SetFont("Times New Roman");
-    DrawTextString(timeString);
-    SetFont("Georgia");
+
+    if (PlaybackActive == false)
+    {
+        SetPointSize(30);
+        MovePen(6, 4.5);
+        DrawTextString("Current Player:");
+        MovePen(6, 4);
+        SetPointSize(50);
+        SetPenColor(BluePlayerTurn ? "Blue" : "Red");
+        DrawTextString(BluePlayerTurn ? "Blue" : "Red");
+        SetPenColor("Black");
+        MovePen(6, 3.5);
+        SetPointSize(30);
+        DrawTextString("Time Remaining:");
+        MovePen(6, 3);
+        SetPointSize(50);
+        char timeString[20];
+        snprintf(timeString, 20, "%d s", TimeRemaining);
+        SetFont("Times New Roman");
+        DrawTextString(timeString);
+        SetFont("Georgia");
+        MovePen(6, 2.5);
+        SetPointSize(30);
+        DrawTextString("Time Elapsed:");
+        MovePen(6, 2);
+        SetPointSize(50);
+        snprintf(timeString, 20, "%02d:%02d:%02d", TotalTime / 3600, TotalTime % 3600 / 60, TotalTime % 3600 % 60);
+        SetFont("Times New Roman");
+        DrawTextString(timeString);
+        SetFont("Georgia");
+    }
+
     MovePen(6, 1);
-    if (GamePause)
+    SetPointSize(50);
+    if (PlaybackActive)
+    {
+        DrawTextString("Playing...");
+    }
+    else if (GamePause)
     {
         DrawTextString("PAUSED");
     }
@@ -364,10 +575,17 @@ void drawLabels(void)
     }
     else if (ForcedCapture)
     {
-        DrawTextString("You must jump.");
+        SetPointSize(40);
+        DrawTextString("Mandatory jump!");
     }
 
-
+    if (LogActive)
+    {
+        MovePen(1, 0.5);
+        SetPenColor("Red");
+        SetPointSize(20);
+        DrawTextString("Recording Enabled");
+    }
     SetPointSize(oldSize);
     SetFont(oldFont);
 }
@@ -469,6 +687,10 @@ void drawPieces(void)
 // Sets the turn, resets the timer, and checks for other conditions.
 void setTurn(bool blue)
 {
+    if (LogActive)
+    {
+        logBoardStateToReplayFile(LogFile);
+    }
     PieceSelected = -1;
     InChainCapture = false;
     ForcedCapture = false;
@@ -603,6 +825,10 @@ void processMovePieceClick(int x, int y)
                 if (checkCapturePossible(true, x, y, BlueKings[PieceSelected]))
                 {
                     InChainCapture = true;
+                    if (LogActive)
+                    {
+                        logBoardStateToReplayFile(LogFile);
+                    }
                     return;
                 }
                 else
@@ -631,6 +857,10 @@ void processMovePieceClick(int x, int y)
                 if (checkCapturePossible(true, x, y, BlueKings[PieceSelected]))
                 {
                     InChainCapture = true;
+                    if (LogActive)
+                    {
+                        logBoardStateToReplayFile(LogFile);
+                    }
                     return;
                 }
                 else
@@ -653,6 +883,10 @@ void processMovePieceClick(int x, int y)
                 if (checkCapturePossible(true, x, y, BlueKings[PieceSelected]))
                 {
                     InChainCapture = true;
+                    if (LogActive)
+                    {
+                        logBoardStateToReplayFile(LogFile);
+                    }
                     return;
                 }
                 else
@@ -675,6 +909,10 @@ void processMovePieceClick(int x, int y)
                 if (checkCapturePossible(true, x, y, BlueKings[PieceSelected]))
                 {
                     InChainCapture = true;
+                    if (LogActive)
+                    {
+                        logBoardStateToReplayFile(LogFile);
+                    }
                     return;
                 }
                 else
@@ -729,6 +967,10 @@ void processMovePieceClick(int x, int y)
                 if (checkCapturePossible(false, x, y, RedKings[PieceSelected]))
                 {
                     InChainCapture = true;
+                    if (LogActive)
+                    {
+                        logBoardStateToReplayFile(LogFile);
+                    }
                     return;
                 }
                 else
@@ -757,6 +999,10 @@ void processMovePieceClick(int x, int y)
                 if (checkCapturePossible(false, x, y, RedKings[PieceSelected]))
                 {
                     InChainCapture = true;
+                    if (LogActive)
+                    {
+                        logBoardStateToReplayFile(LogFile);
+                    }
                     return;
                 }
                 else
@@ -779,6 +1025,10 @@ void processMovePieceClick(int x, int y)
                 if (checkCapturePossible(false, x, y, RedKings[PieceSelected]))
                 {
                     InChainCapture = true;
+                    if (LogActive)
+                    {
+                        logBoardStateToReplayFile(LogFile);
+                    }
                     return;
                 }
                 else
@@ -801,6 +1051,10 @@ void processMovePieceClick(int x, int y)
                 if (checkCapturePossible(false, x, y, RedKings[PieceSelected]))
                 {
                     InChainCapture = true;
+                    if (LogActive)
+                    {
+                        logBoardStateToReplayFile(LogFile);
+                    }
                     return;
                 }
                 else
@@ -821,7 +1075,7 @@ void display(void)
     drawBoard();
     drawPieces();
     drawLabels();
-    drawMenu();
+    if (!PlaybackActive) drawMenu();
     UpdateDisplay();
 }
 
@@ -832,9 +1086,10 @@ void processWin(bool isBlue)
     printf("%s Player Wins\n", isBlue ? "Blue" : "Red");
 
     GamePause = true;
+    if (LogActive) stopRecording();
     PlaySound("ChkIntro.wav", NULL, SND_ASYNC);
     char message[300];
-    snprintf(message, 300, "%s PLAYER WINS!\r\nThis game lasted for %d h %d min %d s.\r\nThanks for playing!", isBlue ? "BLUE" : "RED", TotalTime / 3600, TotalTime % 3600 / 60, TotalTime % 3600 % 60);
+    snprintf(message, 300, "%s PLAYER WINS!\nThis game lasted for %d h %d min %d s.\nThanks for playing!", isBlue ? "BLUE" : "RED", TotalTime / 3600, TotalTime % 3600 / 60, TotalTime % 3600 % 60);
     MessageBox((HWND)GetGraphicsWindowHwnd(), message, "Winner!", MB_ICONASTERISK);
 
     resetGame();
@@ -922,7 +1177,7 @@ void processCharEvent(char ch)
 // Processes a timer event.
 void processTimerEvent(int timerID)
 {
-    if (timerID == TURN_TIMER && GamePause == false)
+    if (timerID == TURN_TIMER && GamePause == false && PlaybackActive == false)
     {
         if (TimeRemaining <= 0)
         {
@@ -958,10 +1213,14 @@ void Main()
     registerKeyboardEvent(processKeyboardEvent);
     registerTimerEvent(processTimerEvent);
 
-    // Start the turn timer
-    startTimer(TURN_TIMER, 1000);
     display();
 
     // Play the theme song
     PlaySound("ChkIntro.wav", NULL, SND_ASYNC);
+
+    // Welcome the user
+    MessageBox((HWND)GetGraphicsWindowHwnd(), "Welcome to American Checkers!\nPress OK to start playing.", "Welcome!", MB_ICONINFORMATION);
+
+    // Start the turn timer
+    startTimer(TURN_TIMER, 1000);
 }

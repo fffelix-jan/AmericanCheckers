@@ -8,7 +8,8 @@
  * 
  * MODIFIED VERSION BY FELIX AN: This version contains a
  * GetGraphicsWindowHwnd() and a GetConsoleWindowHwnd()
- * function.
+ * function. The window style is changed, and the icon is
+ * set.
  */
 
 #include <stdio.h>
@@ -26,6 +27,8 @@
 #include "gcalloc.h"
 #include "strlib.h"
 #include "extgraph.h"
+
+#include "../resource.h"
 
 /*
  * Parameters
@@ -868,7 +871,8 @@ static void InitDisplay(void)
     yResolution *= scaleFactor;
     SetRectFromSize(&graphicsRect, LeftMargin, TopMargin,
                     PixelsX(windowWidth), PixelsY(windowHeight));
-    style = WS_OVERLAPPEDWINDOW & ~(WS_MINIMIZEBOX | WS_MAXIMIZEBOX);
+    // Style was modified by Felix An
+    style = WS_OVERLAPPEDWINDOW & ~(WS_MAXIMIZEBOX | WS_THICKFRAME);
     
     g_keyboard = NULL;
 	g_mouse = NULL;
@@ -878,7 +882,7 @@ static void InitDisplay(void)
     wndcls.cbWndExtra = 0;
     wndcls.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
     wndcls.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wndcls.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    wndcls.hIcon = LoadIcon(NULL, IDI_WESTERNCHECKERS);
     wndcls.hInstance = NULL;
     wndcls.lpfnWndProc = GraphicsEventProc;
     wndcls.lpszClassName = "Graphics Window";
@@ -939,6 +943,12 @@ static void InitDisplay(void)
                  consoleRect.left, consoleRect.top,
                  RectWidth(&consoleRect), RectHeight(&consoleRect), 0);
     */
+    
+    // Code by Felix An
+    // Set the window icon
+    SendMessage(graphicsWindow, WM_SETICON, ICON_BIG, LoadIcon(NULL, IDI_WESTERNCHECKERS));
+    SendMessage(graphicsWindow, WM_SETICON, ICON_SMALL, LoadIcon(NULL, IDI_SMALL));
+    SendMessage(graphicsWindow, WM_SETICON, ICON_SMALL2, LoadIcon(NULL, IDI_SMALL));
 
     InitDrawingTools();
 }
