@@ -430,6 +430,7 @@ void logTime(void)
 // Opens the Help website.
 inline void openHelp(void)
 {
+    GamePause = true;
     ShellExecute(0, 0, "https://www.felixan.ca/AmericanCheckersHowToPlay.html", 0, 0, SW_SHOW);
 }
 
@@ -496,7 +497,6 @@ void drawMenu()
     if (selection > 0) selectedLabel = menuListHelp[selection];
     if (selection == 1)
     {
-        GamePause = true;
         openHelp();
     }
     if (selection == 2)
