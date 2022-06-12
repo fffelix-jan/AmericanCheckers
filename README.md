@@ -1,6 +1,8 @@
 # American Checkers
  A checkers board game for Windows made in C using libgraphics by Zhejiang University.
 
+ Download link: https://github.com/fffelix-jan/AmericanCheckers/releases/download/v1.0.0/AmericanCheckers-1.0.0.zip
+
 ## Summary
 This program is a version of the classic American checkers (also known as English draughts) board game for Windows. It allows the user to play checkers with a friend sitting beside them. It also enables the user to save partially completed games so that they can be continued later on, and it also has a recording feature to allow users to record and replay games.
 
